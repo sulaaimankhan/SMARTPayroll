@@ -1,5 +1,977 @@
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
-#include <math.h>
 
-thanks it worked.
+#define MAX_NAME 15
+#define MAX_STATE 3
+#define MAX_EMAIL 20
+#define MAX_ST 100
+#define MAX_POSTCODE 4
+#define MAX_MOBILE 10
+#define MAX_SEC 10
+#define MAX_EMPLOYEE 20
+#define MAX_STAFFID 8
+#define MAX_STAFF 200
+#define MAX_PASSWORD 20
+#define MAX_DESCRIPTION 50
+#define MAX_DEPARTMENT 50
+#define DEBUG
+
+typedef struct date
+{
+    int day;
+	int month;
+	int year;
+	int hour;
+	int minute;
+	
+} date_t;
+
+typedef struct claim
+{
+	char *department[MAX_DEPARTMENT];
+	int claim_ID;
+	date_t *claim_date;
+	struct claim *next;
+	char description[MAX_DESCRIPTION];
+} claim_t;
+
+struct employee{
+    char staff_id[MAX_STAFFID];
+    char first_name[MAX_NAME];
+    char last_name[MAX_NAME];
+    char email[MAX_EMAIL];
+    char postcode[MAX_POSTCODE];
+    char state[MAX_STATE];
+    char mobile[MAX_MOBILE];
+    char gender;
+    char password[MAX_PASSWORD];
+    char staddress[MAX_ST];
+    int unitnumber;
+    date_t employeedob;
+    char security[MAX_SEC];
+    char suburb[50];
+    claim_t claims;
+};
+typedef struct employee employee_t;
+
+/*CLAIMS POINTER*/
+claim_t *claim_ptr;
+claim_t *mid;
+
+
+
+int rego(claim_t *first, claim_t *new, int ClaimNum);
+void clrscr();
+int checkrego(claim_t *first, claim_t *new, int ClaimNum,char staff_id[MAX_STAFFID]);
+int employee_menu(claim_t *first, claim_t *new, int ClaimNum);
+int admin_menu();
+int log_in_admin();
+int print_admin_menu();
+int ReadIntInRange( int * p, const char * prompt, int low, int high );
+int employee_login(claim_t *first, claim_t *new, int ClaimNum);
+int checkregoa_act(claim_t *first, claim_t *new, int ClaimNum,char staff_id[MAX_STAFFID],char password[MAX_PASSWORD]);
+int retrieve_employee_menu(claim_t *first, claim_t *new, int ClaimNum);
+int print_employee_menu();
+int no_user_exist_error(claim_t *first, claim_t *new, int ClaimNum);
+int suburbcheck(char suburb[]);
+int add_suburb();   /*problem reading suburb with space*/
+int strength_check(char* password);
+int generate_staffid();
+int admin_already_generated(char* staffid);
+int password_change_option();
+int change_password();
+void choice(claim_t *first, claim_t *new, int ClaimNum, char *staff_id, char *name);
+claim_t *AddClaim(claim_t *last);
+int Claim_Hour();
+int Claim_Minute();
+int Claim_Day();
+int Claim_Month();
+employee_t *Add_Employee(employee_t *last);
+void Search_Claim(claim_t **find,int claimID,char *staff_id, char *name, int Claim_num);
+int scan_ID();
+employee_t* Search_Employee(employee_t **find, int eID);
+
+int main (int argc, char* argv[])
+{
+    if (argc <=1)
+    {
+		clrscr();
+		printf("\033[1;34m");	
+		printf("*******************************************************************\n");
+ 		printf("*******************************************************************\n");
+		printf("*******                                                     *******\n");	     
+		printf("*******         SMARTPayroll Self-Financing System     	    *******\n");
+		printf("*******                                                	    *******\n");	
+		printf("*******************************************************************\n");
+		printf("*******************************************************************\n");
+		printf("\033[0m");
+		printf("Welcome to SMARTPayroll, where are your work claims are simplified!\n");
+		printf("To begin, choose a letter\n");
+		printf("\n");
+       	printf("	-A. Employee\n");
+        printf("	-B. Employer\n");
+		printf("	-C. Administrator\n");
+		printf("\n");
+        	return 1;
+    }
+
+    if (strcmp(argv[1], "-a") == 0 || strcmp(argv[1], "-A") == 0)
+	{				
+		clrscr();		
+        int claim=0;
+        claim_t *first= NULL;
+        claim_t *new= NULL;
+		employee_menu(first,new,claim);	
+	}
+    if (strcmp(argv[1], "-b") == 0 || strcmp(argv[1], "-B") == 0)
+    {
+        
+	    clrscr();	
+	    return 0;
+    }
+	 if (strcmp(argv[1], "-c") == 0 || strcmp(argv[1], "-C") == 0)
+    {
+	    clrscr();
+        log_in_admin();
+	    return 0;
+    }
+    return 0;
+}
+
+
+int employee_login(claim_t *first, claim_t *new, int ClaimNum)
+{
+	char staff_id[9];
+    printf("Staff ID:\n");
+    scanf("%s",staff_id);
+    printf("Password:\n");
+    char password[20];
+    scanf("%s",password);
+    checkregoa_act(first,new,ClaimNum,staff_id,password);
+    return 0;
+}
+
+
+/*WAS ONLY READING FIRST NUMBER OF CHARACTERS HAD TO MAKE ARRAY FLEXIBLE*/
+int log_in_admin()
+{
+    char adminid[6];
+    char password[20];
+    int loop=0;
+    while(loop==0)
+    {
+    char *admin="admin";
+
+    FILE* log_admin; 
+	log_admin=fopen("admin_password.txt","r");
+    printf("Admin ID: ");
+    fgets(adminid,sizeof(adminid),stdin);
+    if(adminid[0]=='\n')
+    {
+         fgets(adminid,sizeof(adminid),stdin);
+    }
+    if(adminid[strlen(adminid)-1]=='\n')
+    {
+        adminid[strlen(adminid)-1]='\0';
+    }
+    printf("Password: ");
+    fgets(password,sizeof(password),stdin);
+    if(password[0]=='\n')
+    {
+         fgets(password,sizeof(password),stdin);
+    }
+    password[strlen(password)-1]='\0';
+    char password2[strlen(password)];
+    fscanf(log_admin,"%s",password2);
+
+
+    /*attempted to mask password with * but failed
+    not supported with the libraries :( */
+    /*password[strlen(password)-1]='\0';*/
+    if(strcmp(adminid,admin)==0)
+    {
+        if(strcmp(password,password2)==0)
+        {
+            loop=1;
+            clrscr();
+            admin_menu();
+        }
+        else
+        {
+            printf("Failed to log in. Please try again\n");
+        }
+    }
+    else
+    {
+        printf("Failed to log in. Please try again\n");
+    }
+    }
+    return 0;
+}
+
+
+int admin_menu()
+{
+    print_admin_menu();
+    int loop=0;
+    while(loop==0)
+    {  
+    int choice;
+    ReadIntInRange(&choice,"Choice", 1, 6 ); 
+    if(choice==2)
+    {
+        loop=1;
+        generate_staffid();
+        clrscr();
+        printf("Staff ID successfully generated\n");
+        admin_menu();
+    }
+    else if(choice==1)
+    {
+        loop=1;
+        clrscr();
+        printf("Quitting...................\n");
+        printf("\n");
+        printf("\n");
+        printf("\n");
+        printf("\n");
+        printf("Goodbye. See you again!\n");
+        printf("\n");
+    }
+    else if(choice==6)
+    {
+        password_change_option();
+    }
+    }
+    return 0;
+}
+
+
+int password_change_option()
+{
+    char password2[20];
+    char password[20];
+    FILE* log_admin; 
+	log_admin=fopen("admin_password.txt","r");
+    printf("Password: ");
+    fgets(password,sizeof(password),stdin);
+    fscanf(log_admin,"%s\n",password2);
+    if(password[0]=='\n')
+    {
+        fgets(password,sizeof(password),stdin);
+    }
+    password[strlen(password)-1]='\0';
+    if(strcmp(password,password2)==0)
+        {
+            change_password();
+        }
+    else
+        {
+            clrscr();
+            printf("Wrong Password. Not Allowed to Change Password.\n");
+            admin_menu();
+        }
+return 0;
+}
+
+
+void choice(claim_t *first, claim_t *new, int ClaimNum, char *staff_id, char *name)
+{
+    int repeat=1;
+    while(repeat==1)
+    {
+    int choice2;
+    printf("Hello %s, Your Employee ID is: %s.\n",name,staff_id);
+    /*char n;
+    scanf("%s",&n);*/
+    ReadIntInRange(&choice2,"Choice", 1, 7 );
+    if(choice2==1)
+    {
+        if(first == NULL)
+        {
+            ClaimNum= ClaimNum +1;
+            clrscr();
+            first=AddClaim(NULL);
+            new = first;
+            clrscr();
+            printf("Claim added successfully!\n");
+            print_employee_menu();
+        }
+        else
+        {
+            ClaimNum= ClaimNum +1;
+            clrscr();
+        	claim_ptr->next = NULL;
+		    new->next = claim_ptr;
+            new->next=AddClaim(new);
+            clrscr();
+            printf("Claim added succesfully!\n");
+            printf("Number of Claims: %d\n",ClaimNum);
+            print_employee_menu();
+        }
+        
+        
+    }
+    if(choice2==2)
+    {   
+        clrscr();
+        printf("For forgotten Reference Numbers, please call 112.\n");
+        int search1;
+        printf("Enter the Claim Reference Number:\n");
+        scanf("%d",&search1);
+        #ifdef DEBUG
+        printf("%d\n",search1);
+        #endif
+        printf("\n");
+        int number;
+        Search_Claim(&new,search1,staff_id,name,ClaimNum);
+        printf("Press any number to continue.....\n");
+        scanf("%d",&number);
+        printf("\n");
+        print_employee_menu();
+    }
+    }
+}    
+    
+claim_t *AddClaim(claim_t *last)
+{
+    claim_ptr = (claim_t*)malloc(sizeof(claim_t));
+	claim_ptr -> claim_date = (date_t*)malloc(sizeof(date_t));
+	
+	printf("Enter a unique ID for your claim. REMEMBER TO NOTE THIS DOWN FOR REFERENCE\n");
+	int ID2;
+	scanf("%d",&ID2);
+	claim_ptr -> claim_ID = ID2;
+    #ifdef DEBUG
+    printf("%d\n",ID2);
+	#endif
+
+    int day = Claim_Day();
+	claim_ptr -> claim_date -> day = day;
+	
+	int month = Claim_Month();
+	claim_ptr -> claim_date -> month = month;
+
+	int hour = Claim_Hour();
+	claim_ptr -> claim_date -> hour = hour;
+	
+	int minute = Claim_Minute();
+	claim_ptr -> claim_date -> minute = minute;
+	
+    char description1[50];
+	printf("Enter the Claim Description (For what Job)\n");
+    fgets(description1,sizeof(description1),stdin);
+    if(description1[0]=='\n' || description1 [0]=='\0')
+    {
+        fgets(description1,sizeof(description1),stdin);
+    }
+    strcpy(claim_ptr -> description,description1);
+
+
+	return claim_ptr;
+}
+
+void Search_Claim(claim_t **find,int claimID,char *staff_id, char *name, int Claim_num)
+	{
+		claim_t* claim = *find;
+		if (claim == NULL)
+		{
+			printf("Claim Doesn't Exist\n");
+		}
+        int i;
+        printf("Number of claims:%d\n",Claim_num);
+        for(i=0;i<Claim_num;i++,claim++)
+        {
+            if(claim !=NULL)
+            {
+            printf("Claim Information (For Authorised Eyes Only)\n");
+            printf("Staff ID of Claim Maker:%s,Name:%s\n",staff_id,name);
+			printf("Claim Reference Number: CM%d\n", claim -> claim_ID);
+			printf("Time of Claim: %02d:%02d\n", claim -> claim_date -> hour, claim->claim_date->minute );
+			printf("Date of Claim:");
+            printf("%d/%d/2019\n",claim->claim_date->day,claim->claim_date->month);
+            printf("Claim Descripton: %s\n", claim -> description);
+            printf("\n");
+            }
+            
+        }
+}
+
+int change_password()
+{
+    FILE* log_admin2;
+    
+    log_admin2=fopen("admin_password.txt","w+");
+    char passwordnew[20];
+    char passwordcheck[20];
+    int passguard=0;
+    while(passguard==0)
+    {
+        printf("Enter new password:\n");
+        fgets(passwordnew,sizeof(passwordnew),stdin);
+        printf("Enter new password again:\n");
+        fgets(passwordcheck,sizeof(passwordcheck),stdin);
+        int new=0;
+        if(strcmp(passwordnew,passwordcheck)==0 )
+        {
+            if(strength_check(passwordcheck)==0)
+            {
+                printf("Error! Password not strong enough\n");
+            }
+            else
+            {
+            new=1;
+            }
+        }
+        else
+        {    
+            printf("Error! Passwords do not match\n");
+        }
+        if (new==1)
+        {
+            passguard=1;
+        }
+    }
+    fprintf(log_admin2,"%s\n",passwordnew);
+    fclose(log_admin2);
+    return 0;
+}
+
+
+/*reads new line and makes invalid choice from start- ANNOYING!!!!*/
+int ReadIntInRange( int * p, const char * prompt, int low, int high ) {
+    while(1) {
+        const int BUFSIZE = 256;
+        char buf[BUFSIZE];
+        printf( "%s: ", prompt );
+        if ( fgets( buf, BUFSIZE, stdin ) == NULL ) {
+            return 0;      
+        }
+        if ( sscanf( buf, "%d", p ) != 1 ) {
+            printf( "Invalid Choice\n" );
+        }
+        else if ( * p < low || * p > high )  {
+            printf( "Inalid Choice\n" );
+        }
+        else {
+            break;
+        }
+    }
+    return 1;
+}
+
+
+int print_admin_menu()
+{
+    printf("\033[1;34m");	
+    printf("*******************************************************************\n");
+    printf("*******************************************************************\n");
+    printf("*******                                                     *******\n");	     
+    printf("*******               ADMINSTRATOR HOMEPAGE                 *******\n");
+    printf("*******                                                	    *******\n");	
+    printf("*******************************************************************\n");
+    printf("*******************************************************************\n");
+    printf("\033[0m");
+    printf("\n");
+    printf("Welcome Employee Name Here\n");
+    printf("    1. Quit Program\n");
+    printf("    2. Generate Staff ID\n");
+    printf("    3. View & Edit Staff Details\n");
+    printf("    4. View All Claims\n");
+    printf("    5. Help\n");
+    printf("    6. Change Password\n");
+    printf("    To begin, pleae choose from 1-5.\n");
+    printf("\n");
+    return 0;
+}
+
+int employee_menu(claim_t *first, claim_t *new, int ClaimNum)
+{
+int looper=0;
+printf("\033[1;34m");	
+printf("*******************************************************************\n");
+printf("*******************************************************************\n");
+printf("*******                                                     *******\n");	     
+printf("*******           WELCOME TO THE EMPLOYEE PAGE!     	    *******\n");
+printf("*******                                                	    *******\n");	
+printf("*******************************************************************\n");
+printf("*******************************************************************\n");
+printf("\033[0m");
+printf("1. Log In\n");
+printf("2. Activate Account\n");
+printf("3. Help\n");
+printf("Choose from 1~3\n");
+	while(looper==0)
+	{
+		int choice;
+        ReadIntInRange(&choice,"Choice",1,3);				
+		if(choice==1)
+		{
+		looper=1;
+		employee_login(first,new,ClaimNum);
+		}
+		else if(choice==2)
+		{
+		looper=1;
+		rego(first,new,ClaimNum);
+	 	clrscr();
+		employee_login(first,new,ClaimNum);
+		}
+		else if(choice==3)
+		{
+		clrscr();	
+		looper=1;
+		printf("1. Your staff ID should be sent to your personal e-mail.\n");
+		printf("For assistance\n Please call 000 from Mondays to Fridays from 10AM to 5PM\n OR e-mail help@smartpayroll.com.au\n");
+		}
+		else
+		{
+		printf("Invalid choice\n");
+		}
+		
+	}
+return 0;
+}
+
+
+int rego(claim_t *first, claim_t *new, int ClaimNum)
+{
+    FILE *rego;
+    FILE *rego_pass;
+    rego_pass=fopen("passwords_activated.txt","a+");
+    rego=fopen("activated.txt","a+");
+    employee_t employee1;
+    printf("Staff ID:\n");
+    scanf("%s",employee1.staff_id);
+    while(checkrego(first,new,ClaimNum,employee1.staff_id)==0)
+    {
+        printf("Staff ID:\n");
+        scanf("%s",employee1.staff_id);
+    }
+    if(checkrego(first,new,ClaimNum,employee1.staff_id)!=0)
+    {
+    fprintf(rego,"%s\n",employee1.staff_id);
+    }
+    fclose(rego);
+    printf("Your password must have a combination of uppercase and lowercase letters and numbers\n");
+    int pass_guard=0;
+    while(pass_guard==0)
+    {
+        int new=0;
+        printf("Enter new password:");
+        scanf("%s",employee1.password);
+        printf("Confirm password:");
+        char password2[MAX_PASSWORD];
+        scanf("%s",password2);
+        if(strcmp(employee1.password,password2)==0 )
+        {
+           if(strength_check(password2)==0)
+           {
+               printf("Error! Password not strong enough\n");
+           }
+           else
+           {
+               new=1;
+           }
+        }
+        else
+        {
+            printf("Error! Passwords do not match\n");
+        }
+        if (new==1)
+        {
+            pass_guard=1;
+        }
+    }
+    fprintf(rego_pass,"%s\n",employee1.password);
+    fclose(rego_pass);
+    clrscr();
+    printf("Family Name:\n");
+    scanf(" %s",employee1.last_name);
+    printf("First Name:\n");
+    scanf(" %s",employee1.first_name);
+    printf("Gender:\n");
+    scanf(" %c",&employee1.gender);
+	printf("Unit Number\n");
+	scanf(" %d",&employee1.unitnumber);
+	printf("Street Address\n");
+
+	fgets(employee1.staddress, sizeof(employee1.staddress), stdin);
+	if (employee1.staddress[0]=='\n')
+    {
+        fgets(employee1.staddress, sizeof(employee1.staddress), stdin);
+    }
+
+	printf("Suburb\n");
+   add_suburb();
+
+    printf("Postcode\n");
+	scanf(" %s",employee1.postcode);
+	printf("State\n");
+	fgets(employee1.state, sizeof(employee1.state), stdin);
+    return 0;
+}
+
+int strength_check(char* password)
+{
+    int i=0;
+    int flag=0;
+    int num=0;
+    int value;
+    for(i=0;i<(strlen(password));i++)
+    {
+        if(password[i]>='A' && password[i]<='Z')
+        {
+            flag=1;
+        }
+        if(password[i]>='0'&& password[i]<='9')
+        {
+            num=1;
+        }
+    }
+    if (num==1 && flag==1)
+    {
+        value=1;
+    }
+    return value;
+}
+
+int add_suburb()
+{
+    employee_t employee1;
+    fgets(employee1.suburb, sizeof(employee1.suburb), stdin);
+	if (employee1.suburb[0]=='\n')
+    {
+        fgets(employee1.suburb, sizeof(employee1.suburb), stdin);
+    }
+    if(employee1.suburb[strlen(employee1.suburb)-1]=='\n')
+    {
+        employee1.suburb[strlen(employee1.suburb)-1]='\0';
+    }
+    while(suburbcheck(employee1.suburb)==0)
+    {
+        fgets(employee1.suburb, sizeof(employee1.suburb), stdin);
+	    if (employee1.suburb[0]=='\n')
+        {
+            fgets(employee1.suburb, sizeof(employee1.suburb), stdin);
+        }
+        if(employee1.suburb[strlen(employee1.suburb)-1]=='\n')
+        {
+            employee1.suburb[strlen(employee1.suburb)-1]='\0';
+        }
+    }
+    return 0;
+}
+
+void clrscr()
+{
+    system("@cls||clear");
+}
+
+/*checkrego only reads from the start cant do this ERROR for multiple users*/
+int checkrego(claim_t *first, claim_t *new, int ClaimNum,char staff_id[MAX_STAFFID])
+{
+    int value=0;
+    int i;
+    int j;
+    int admincheck=0;
+    char admin[100][9];
+    char line[100][9];
+    int flag=0;
+    FILE* log_admin;
+    FILE* log_user; 
+	log_user=fopen("activated.txt","r");
+    log_admin=fopen("admin.txt","r");
+    if(!log_admin)
+    {
+        printf("User doesn't exist.\n");
+        employee_menu(first,new,ClaimNum);
+    }
+    if(!log_user) 
+    {
+        printf("User doesn't exist.\n");
+    }
+    for(i=0;i<10;i++)
+    {
+        fscanf(log_user, "%s\n",line[i]);
+    }
+     for(i=0;i<10;i++)
+    {
+        fscanf(log_admin, "%s\n",admin[i]);
+    }
+    for(i=0;i<10;i++)
+    {
+        if((strcmp(admin[i],staff_id)==0))
+	    {
+            admincheck=1;
+            for(j=0;j<10;j++)
+            {
+                if((strcmp(line[j],staff_id)==0))
+	            {
+                    flag=1;
+	            }
+            }
+            if(flag==1)
+            {
+                clrscr();
+                printf("Error. User already activated! Please call support at 0415 592 001 or try again.\n");
+                employee_menu(first,new,ClaimNum);
+            }
+            else
+            {
+                value=1;
+            }
+	    }
+    }
+    if(admincheck==0)
+    {
+        printf("Error. User not found in database.\n");
+    }
+    return value;
+}
+
+int no_user_exist_error(claim_t *first, claim_t *new, int ClaimNum)
+{
+    printf("Error. User does not exist.\n");
+    employee_menu(first,new,ClaimNum);
+    return 0;
+}
+
+
+int checkregoa_act(claim_t *first, claim_t *new, int ClaimNum,char staff_id[MAX_STAFFID],char password[MAX_PASSWORD])
+{
+    int value=0;
+    int i;
+    char line[100][9];
+    char pass[100][MAX_PASSWORD];
+    int j;
+    int flag=0;
+    FILE* log_pass; 
+    FILE* log_user; 
+	log_user=fopen("activated.txt","r");
+    log_pass=fopen("passwords_activated.txt","r");
+    if(!log_user && !log_pass) 
+    {
+    retrieve_employee_menu(first,new,ClaimNum);
+    }
+    for(i=0;i<10;i++)
+    {
+        fscanf(log_user,"%s\n",line[i]);
+    }
+    for(j=0;j<10;j++)
+    {
+        fscanf(log_pass,"%s\n",pass[j]);
+    }
+    for(i=0;i<10;i++)
+    {
+    if((strcmp(line[i],staff_id)==0))
+	{
+        if(strcmp(pass[i],password)==0)
+        {
+        flag=1;
+        }
+	}
+    }
+
+    FILE* names;
+    char name[100][20];
+    char *namecopy;
+    names=fopen("names.txt","r");
+    for(i=0;i<100;i++)
+    {
+        fscanf(names,"%s\n",name[i]);
+    }
+    for(i=0;i<100;i++)
+    {
+        if(strcmp(line[i],staff_id)==0)
+        {
+           namecopy=name[i];
+        }
+    }
+    
+    if(flag==1)
+    {
+        clrscr();
+        printf("Log-In Succesful!\n");
+        print_employee_menu();
+        choice(first,new,ClaimNum,staff_id,namecopy);
+    }
+    if(flag==0)
+    {
+        retrieve_employee_menu(first,new,ClaimNum);
+    }
+    else
+    {
+        value=1;
+    }
+    return value;
+}
+
+int retrieve_employee_menu(claim_t *first, claim_t *new, int ClaimNum)
+{
+    clrscr();
+    printf("Error. Username or password incorrect! Account may not be activated\n");
+    employee_menu(first,new,ClaimNum);
+    return 0;
+}
+
+
+
+
+int print_employee_menu()
+{
+    printf("1.Add a Claim\n");
+    printf("2.View Claims\n");
+    printf("3.Edit Claims\n");
+    printf("4.Compress Claims\n");
+    printf("5.Encrypt Personal Information\n");
+    printf("6.Compress Personal Information\n");
+    printf("7.Change Password\n");
+    printf("8.View Account Details\n");
+    printf("9.Help\n");
+    printf("\n");
+    return 0;
+}
+
+int suburbcheck(char suburb[])
+{
+    int value=0;
+    int i;
+    char line[1000][500];
+    int flag=0;
+    FILE* log_suburb; 
+	log_suburb=fopen("suburbs.txt","r");
+    if(!log_suburb) 
+    {
+        printf("error. program crash\n");
+    }
+    for(i=0;i<1000;i++)
+    {
+        fscanf(log_suburb,"%s\n",line[i]);
+    }
+    for(i=0;i<1000;i++)
+    {
+        if((strcmp(line[i],suburb)==0))
+        {
+            flag=1;
+        }
+    }
+    if(flag==0)
+    {
+        printf("Error. Suburb does not exist.\n");
+    }
+    else
+    {
+        value=1;
+    }
+    return value;
+}
+
+int generate_staffid()
+{
+    FILE *adminwrite;
+    adminwrite=fopen("admin.txt","a+");    
+    employee_t employee1;
+    printf("Generate Staff ID:\n");
+    scanf("%s",employee1.staff_id);
+   while(admin_already_generated(employee1.staff_id)==1)
+   {
+    printf("Generate Staff ID:\n");
+    scanf("%s",employee1.staff_id);
+   }
+   if(admin_already_generated(employee1.staff_id)!=1)
+   {
+    fprintf(adminwrite,"%s\n",employee1.staff_id);
+   }
+    fclose(adminwrite);
+    return 0;
+}
+
+int admin_already_generated(char* staffid)
+{
+    int i=0;
+    char line[100][9];
+    int value=0;
+    FILE *log_user;
+    log_user=fopen("admin.txt","r");
+    for(i=0;i<10;i++)
+    {
+        fscanf(log_user,"%s\n",line[i]);
+        if (strcmp(line[i],staffid)==0)
+        {
+            printf("Error. Staff ID already generated\n");
+            value=1;
+        }
+    }
+    return value;
+}
+
+
+int Claim_Day()
+{
+    int day;
+    printf("Enter the day: ");
+    scanf("%d", &day);
+    if(day < 1 || day > 31)
+	{
+	    printf("Invalid Input\n");
+	    Claim_Day();
+	}
+	else if (day >= 1 || day <= 31)
+	{
+	    return day;
+	}
+	return day;
+}
+
+int Claim_Month()
+{
+    int month;
+    printf("Enter the month: ");
+    scanf("%d", &month);
+    if(month < 1 || month > 31)
+	{
+	    printf("Invalid Input\n");
+	    Claim_Month();
+	}
+	else if (month >= 1 || month <= 31)
+	{
+	    return month;
+	}
+	return month;
+}
+
+int Claim_Hour()
+{
+    int hour;
+    printf("Enter the hour in 24 hour clock:");
+    scanf("%d", &hour);
+    if(hour < 0 || hour > 23)
+	{
+	    printf("Invalid Input\n");
+	    Claim_Hour();
+	}
+	else if (hour >= 0 || hour <= 23)
+	{
+	    return hour;
+	}
+	return hour;
+}
+
+int Claim_Minute()
+{
+    int minute;
+    printf("Enter the minute:");
+    scanf("%d", &minute);
+    if(minute < 1 || minute > 61)
+	{
+	    printf("Invalid Input\n");
+	    Claim_Minute();
+	}
+	else if (minute >= 1 || minute <= 61)
+	{
+	    return minute;
+	}
+	return minute;
+}
